@@ -18,7 +18,8 @@ const CategoryManager = () => {
   // Form states
   const [formData, setFormData] = useState({});
   const [timelineFormData, setTimelineFormData] = useState({
-    position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming'
+    position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming',
+    requires_jury: false, is_unlimited_candidates: true, max_candidates: ''
   });
   const [sponsorFormData, setSponsorFormData] = useState({
     sponsor_id: '', is_primary: false, contribution_fcfa: ''
@@ -32,6 +33,12 @@ const CategoryManager = () => {
   const [editingPrizeId, setEditingPrizeId] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [winnerPrizeSelection, setWinnerPrizeSelection] = useState('');
+  
+  // Jury States
+  const [activeJuryStep, setActiveJuryStep] = useState(null);
+  const [juryMembers, setJuryMembers] = useState([]);
+  const [newJuryEmail, setNewJuryEmail] = useState('');
+  const [isJuryModalOpen, setIsJuryModalOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -123,7 +130,7 @@ const CategoryManager = () => {
       if (res.ok) {
         setIsAddingTimeline(false);
         setEditingStepId(null);
-        setTimelineFormData({ position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming' });
+        setTimelineFormData({ position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming', requires_jury: false, is_unlimited_candidates: true, max_candidates: '' });
         fetchData();
       }
     } catch (error) {
@@ -141,7 +148,10 @@ const CategoryManager = () => {
       description_fr: step.description_fr || '',
       starts_at: step.starts_at ? new Date(step.starts_at).toISOString().slice(0, 16) : '',
       ends_at: step.ends_at ? new Date(step.ends_at).toISOString().slice(0, 16) : '',
-      status: step.status || 'upcoming'
+      status: step.status || 'upcoming',
+      requires_jury: step.requires_jury || false,
+      is_unlimited_candidates: step.is_unlimited_candidates !== false,
+      max_candidates: step.max_candidates || ''
     });
     setIsAddingTimeline(true);
   };
@@ -152,6 +162,74 @@ const CategoryManager = () => {
       const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${stepId}`, { method: 'DELETE' });
       if (res.ok) fetchData();
     } catch (error) { console.error('Error deleting step:', error); }
+  };
+
+  // --- Jury Logic ---
+  const openJuryModal = async (step) => {
+    setActiveJuryStep(step);
+    setIsJuryModalOpen(true);
+    fetchJuryMembers(step.id);
+  };
+
+  const fetchJuryMembers = async (stepId) => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${stepId}/jury`);
+      const data = await res.json();
+      if (data.status === 'success') setJuryMembers(data.data);
+    } catch (error) {
+      console.error('Error fetching jury:', error);
+    }
+  };
+
+  const inviteJuryMember = async (e) => {
+    e.preventDefault();
+    if (!newJuryEmail) return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${activeJuryStep.id}/jury`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newJuryEmail })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewJuryEmail('');
+        fetchJuryMembers(activeJuryStep.id);
+      } else {
+        alert(data.message || 'Failed to invite jury member');
+      }
+    } catch (error) {
+      console.error('Error inviting jury member:', error);
+    }
+  };
+
+  const removeJuryMember = async (juryId) => {
+    if (!window.confirm('Remove this jury member?')) return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${activeJuryStep.id}/jury/${juryId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) fetchJuryMembers(activeJuryStep.id);
+    } catch (error) {
+      console.error('Error removing jury member:', error);
+    }
+  };
+
+  const triggerAdvancement = async (stepId) => {
+    if (!window.confirm('Are you sure you want to tally votes and advance candidates? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${stepId}/advance-candidates`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Successfully advanced ${data.data.advanced_count} candidates!`);
+        fetchData();
+      } else {
+        alert(data.message || 'Advancement failed');
+      }
+    } catch (error) {
+      console.error('Error advancing candidates:', error);
+    }
   };
 
   const handlePrizeSubmit = async (e) => {
@@ -374,6 +452,43 @@ const CategoryManager = () => {
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:border-[var(--color-minesec-gold)] outline-none"
               />
             </div>
+            
+            <div className="col-span-2 border-t border-white/10 pt-6 mt-2">
+              <h4 className="text-md font-bold mb-4 text-[var(--color-minesec-gold)]">Application Deadlines</h4>
+              
+              <div className="flex items-center gap-2 mb-4">
+                <input 
+                  type="checkbox" 
+                  checked={formData.is_always_open || false}
+                  onChange={(e) => setFormData({...formData, is_always_open: e.target.checked})}
+                  id="isAlwaysOpen"
+                />
+                <label htmlFor="isAlwaysOpen" className="text-sm cursor-pointer font-mono uppercase tracking-wider text-[var(--color-minesec-text-muted)]">Always Open (No application deadline)</label>
+              </div>
+
+              {!formData.is_always_open && (
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase mb-2">Applications Open At</label>
+                    <input 
+                      type="datetime-local" 
+                      value={formData.applications_open_at ? new Date(formData.applications_open_at).toISOString().slice(0, 16) : ''}
+                      onChange={(e) => setFormData({...formData, applications_open_at: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:border-[var(--color-minesec-gold)] outline-none"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="block text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase mb-2">Applications Close At</label>
+                    <input 
+                      type="datetime-local" 
+                      value={formData.applications_close_at ? new Date(formData.applications_close_at).toISOString().slice(0, 16) : ''}
+                      onChange={(e) => setFormData({...formData, applications_close_at: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:border-[var(--color-minesec-gold)] outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -460,7 +575,7 @@ const CategoryManager = () => {
               <button 
                 onClick={() => {
                   if (isAddingTimeline) { setIsAddingTimeline(false); setEditingStepId(null); }
-                  else { setTimelineFormData({ position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming' }); setEditingStepId(null); setIsAddingTimeline(true); }
+                  else { setTimelineFormData({ position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming', requires_jury: false, is_unlimited_candidates: true, max_candidates: '' }); setEditingStepId(null); setIsAddingTimeline(true); }
                 }}
                 className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
               >
@@ -509,6 +624,45 @@ const CategoryManager = () => {
                     <label className="block text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase mb-1">Description (FR)</label>
                     <textarea value={timelineFormData.description_fr} onChange={(e) => setTimelineFormData({...timelineFormData, description_fr: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded px-3 py-2 text-sm focus:border-[var(--color-minesec-gold)] outline-none" rows="2"></textarea>
                   </div>
+                  
+                  <div className="col-span-2 border-t border-white/10 pt-4 mt-2">
+                    <h5 className="text-sm font-bold mb-3 text-[var(--color-minesec-gold)]">Evaluation & Advancement</h5>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          checked={timelineFormData.requires_jury} 
+                          onChange={(e) => setTimelineFormData({...timelineFormData, requires_jury: e.target.checked})} 
+                          id="reqJury" 
+                        />
+                        <label htmlFor="reqJury" className="text-sm cursor-pointer">Requires Jury (Evaluators)</label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          checked={timelineFormData.is_unlimited_candidates} 
+                          onChange={(e) => setTimelineFormData({...timelineFormData, is_unlimited_candidates: e.target.checked})} 
+                          id="unlimitedCand" 
+                        />
+                        <label htmlFor="unlimitedCand" className="text-sm cursor-pointer">All Passing Candidates Advance (Unlimited)</label>
+                      </div>
+                      
+                      {!timelineFormData.is_unlimited_candidates && (
+                        <div className="mt-2 w-1/2">
+                          <label className="block text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase mb-1">Max Candidates to Advance</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={timelineFormData.max_candidates} 
+                            onChange={(e) => setTimelineFormData({...timelineFormData, max_candidates: e.target.value})} 
+                            className="w-full bg-black/50 border border-white/10 rounded px-3 py-2 text-sm focus:border-[var(--color-minesec-gold)] outline-none" 
+                            placeholder="e.g. 5"
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <button type="submit" className="px-4 py-2 bg-[var(--color-minesec-gold)] text-black font-bold text-sm rounded">Save Step</button>
               </form>
@@ -529,8 +683,11 @@ const CategoryManager = () => {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <button onClick={() => handleEditStep(step)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-white opacity-0 group-hover:opacity-100 transition-all"><Pencil size={18} /></button>
-                      <button onClick={() => deleteTimelineStep(step.id)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={18} /></button>
+                      <button onClick={() => handleEditStep(step)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-white opacity-0 group-hover:opacity-100 transition-all" title="Edit Step"><Pencil size={18} /></button>
+                      {step.requires_jury && (
+                        <button onClick={() => openJuryModal(step)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-[var(--color-minesec-gold)] opacity-0 group-hover:opacity-100 transition-all" title="Manage Jury"><Users size={18} /></button>
+                      )}
+                      <button onClick={() => deleteTimelineStep(step.id)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" title="Delete Step"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 ))}
@@ -889,6 +1046,102 @@ const CategoryManager = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Jury Management Modal */}
+      {isJuryModalOpen && activeJuryStep && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#020a07] border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#020a07]/90 backdrop-blur z-10">
+              <div>
+                <h3 className="text-xl font-bold">Manage Jury</h3>
+                <span className="font-mono text-[var(--color-minesec-text-muted)] text-sm">Step {activeJuryStep.position}: {activeJuryStep.name_en}</span>
+              </div>
+              <button onClick={() => { setIsJuryModalOpen(false); setActiveJuryStep(null); }} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
+            </div>
+            
+            <div className="p-8 flex-1 overflow-y-auto space-y-8">
+              
+              <div className="bento-card border-[var(--color-minesec-gold)]/30">
+                <h4 className="font-bold mb-4 flex items-center gap-2"><Users size={18} className="text-[var(--color-minesec-gold)]"/> Invite Jury Member</h4>
+                <form onSubmit={inviteJuryMember} className="flex gap-4">
+                  <input 
+                    type="email" 
+                    placeholder="Enter email address..." 
+                    value={newJuryEmail}
+                    onChange={(e) => setNewJuryEmail(e.target.value)}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 focus:border-[var(--color-minesec-gold)] outline-none"
+                    required
+                  />
+                  <button type="submit" className="px-6 py-2 bg-[var(--color-minesec-gold)] text-black font-bold rounded-lg hover:bg-white transition-colors whitespace-nowrap">
+                    Send Invite Link
+                  </button>
+                </form>
+                <p className="mt-3 text-xs text-[var(--color-minesec-text-muted)]">
+                  Invited members will receive an email with a secure "Magic Link" to access the evaluation portal. No account creation required.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold mb-4">Invited Jury Members ({juryMembers.length})</h4>
+                {juryMembers.length === 0 ? (
+                  <div className="p-6 border border-dashed border-white/10 rounded-xl text-center text-[var(--color-minesec-text-muted)]">
+                    No jury members invited for this step yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {juryMembers.map(jury => (
+                      <div key={jury.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
+                        <div>
+                          <div className="font-bold">{jury.email}</div>
+                          <div className="text-xs font-mono mt-1 flex items-center gap-2">
+                            <span className="text-[var(--color-minesec-text-muted)]">Status:</span>
+                            {jury.has_voted ? (
+                              <span className="text-green-400 bg-green-400/10 px-2 py-0.5 rounded">Voted</span>
+                            ) : (
+                              <span className="text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded">Pending</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(`http://localhost:5173/evaluate?token=${jury.access_token}`);
+                              alert('Magic link copied to clipboard!');
+                            }}
+                            className="p-2 text-[var(--color-minesec-text-muted)] hover:text-white transition-colors"
+                            title="Copy Magic Link"
+                          >
+                            <FileText size={18} />
+                          </button>
+                          <button 
+                            onClick={() => removeJuryMember(jury.id)} 
+                            className="p-2 text-[var(--color-minesec-text-muted)] hover:text-red-400 transition-colors"
+                            title="Revoke Access"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-white/10 bg-black/50 flex justify-between items-center">
+              <div className="text-xs text-[var(--color-minesec-text-muted)]">
+                {juryMembers.filter(j => j.has_voted).length} of {juryMembers.length} members have voted
+              </div>
+              <button 
+                onClick={() => triggerAdvancement(activeJuryStep.id)}
+                className="px-6 py-2 bg-green-500/20 text-green-400 rounded font-bold hover:bg-green-500 hover:text-white transition-colors"
+              >
+                Tally Votes & Advance Candidates
+              </button>
             </div>
           </div>
         </div>

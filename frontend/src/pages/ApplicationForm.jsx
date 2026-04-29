@@ -35,7 +35,21 @@ const ApplicationForm = () => {
         const catRes = await fetch(`http://localhost:3000/api/categories/${categoryId}`);
         const catData = await catRes.json();
         
-        if (catData.status === 'success') setCategory(catData.data);
+        if (catData.status === 'success') {
+          const cat = catData.data;
+          const now = new Date();
+          const isOpen = cat.is_always_open || 
+            ((!cat.applications_open_at || new Date(cat.applications_open_at) <= now) && 
+             (!cat.applications_close_at || new Date(cat.applications_close_at) >= now));
+
+          if (!isOpen) {
+            alert('Applications for this category are currently closed.');
+            navigate(`/category/${categoryId}`);
+            return;
+          }
+
+          setCategory(cat);
+        }
         
         // Mockup Locations
         const mockupLocations = {

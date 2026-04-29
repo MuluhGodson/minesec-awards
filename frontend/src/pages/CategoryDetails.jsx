@@ -378,9 +378,31 @@ const CategoryDetails = () => {
               )}
             </div>
 
-            <Link to={`/apply/${category.id}`} className="w-full py-4 rounded-xl bg-gradient-to-r from-[var(--color-minesec-gold-dark)] to-[var(--color-minesec-gold)] text-[var(--color-minesec-green-dark)] text-sm font-bold shadow-[0_0_15px_rgba(207,168,94,0.3)] hover:shadow-[0_0_20px_rgba(207,168,94,0.5)] transition-all flex items-center justify-center gap-2">
-              {t('categoryDetails.apply')} &rarr;
-            </Link>
+            {(() => {
+              const now = new Date();
+              const isOpen = category.is_always_open || 
+                ((!category.applications_open_at || new Date(category.applications_open_at) <= now) && 
+                 (!category.applications_close_at || new Date(category.applications_close_at) >= now));
+                 
+              if (isOpen) {
+                return (
+                  <Link to={`/apply/${category.id}`} className="w-full py-4 rounded-xl bg-gradient-to-r from-[var(--color-minesec-gold-dark)] to-[var(--color-minesec-gold)] text-[var(--color-minesec-green-dark)] text-sm font-bold shadow-[0_0_15px_rgba(207,168,94,0.3)] hover:shadow-[0_0_20px_rgba(207,168,94,0.5)] transition-all flex items-center justify-center gap-2">
+                    {t('categoryDetails.apply')} &rarr;
+                  </Link>
+                );
+              } else {
+                return (
+                  <div className="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-white/50 text-sm font-bold flex flex-col items-center justify-center gap-1 cursor-not-allowed">
+                    <span>Applications Closed</span>
+                    <span className="text-xs font-mono font-normal">
+                      {category.applications_open_at && new Date(category.applications_open_at) > now 
+                        ? `Opens ${new Date(category.applications_open_at).toLocaleDateString()}` 
+                        : 'Deadline Passed'}
+                    </span>
+                  </div>
+                );
+              }
+            })()}
           </div>
         </div>
       </div>

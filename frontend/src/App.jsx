@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import CategoryDetails from './pages/CategoryDetails';
 import ApplicationForm from './pages/ApplicationForm';
+import EvaluationPortal from './pages/EvaluationPortal';
 
 // Admin Components
 import AdminLogin from './admin/Login';
@@ -71,6 +72,8 @@ function App() {
             <Route path="category/:id" element={<CategoryDetails />} />
             <Route path="apply/:categoryId" element={<ApplicationForm />} />
           </Route>
+          
+          <Route path="/evaluate" element={<EvaluationPortal />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
