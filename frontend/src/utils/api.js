@@ -1,3 +1,5 @@
+import { API_BASE } from '../config';
+
 export const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem('admin_token');
   
@@ -12,7 +14,7 @@ export const apiFetch = async (url, options = {}) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`http://localhost:3000/api${url}`, {
+  const response = await fetch(`${API_BASE}/api${url}`, {
     ...options,
     headers,
   });

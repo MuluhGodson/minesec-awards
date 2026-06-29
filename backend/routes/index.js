@@ -11,6 +11,7 @@ const sponsorsRoutes = require('./sponsors');
 const dashboardRoutes = require('./dashboard');
 const locationsRoutes = require('./locations');
 const applicationsRoutes = require('./applications');
+const juryRoutes = require('./jury');
 
 router.use('/editions', editionsRoutes);
 router.use('/categories', categoriesRoutes);
@@ -22,5 +23,6 @@ router.use('/sponsors', sponsorsRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/locations', locationsRoutes);
 router.use('/applications', applicationsRoutes);
+router.use('/jury', juryRoutes);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 const HeroSection = () => {
   const { t, language } = useLanguage();
@@ -9,7 +10,7 @@ const HeroSection = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/dashboard/stats');
+        const response = await fetch(`${API_BASE}/api/dashboard/stats`);
         const data = await response.json();
         if (data.status === 'success') {
           setEdition(data.data.activeEdition);
@@ -52,29 +53,23 @@ const HeroSection = () => {
 
       {/* CTA Buttons */}
       <div className="flex flex-col sm:flex-row items-center gap-4 mb-24">
-        <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-[#0d3827] to-[#041d14] border border-[#22c55e]/30 text-white text-sm font-bold tracking-wide shadow-[0_0_20px_rgba(34,197,94,0.15)] hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] hover:-translate-y-0.5 transition-all">
-          {t('hero.submitApp')}
-        </button>
-        <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/5 border border-white/10 text-white text-sm font-bold tracking-wide hover:bg-white/10 transition-all">
+        <a href="#categories" className="w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-[var(--color-minesec-gold-dark)] to-[var(--color-minesec-gold)] text-[var(--color-minesec-green-dark)] border border-[var(--color-minesec-gold)] text-sm font-bold tracking-wide text-center shadow-[0_0_20px_rgba(207,168,94,0.15)] hover:shadow-[0_0_30px_rgba(207,168,94,0.3)] hover:-translate-y-0.5 transition-all">
           {t('hero.discoverCat')}
-        </button>
+        </a>
       </div>
 
       {/* Statistics Ticker */}
       <div className="w-full max-w-5xl bento-grid gap-4 md:gap-6">
         {[
-          { label: t('hero.stats.edition'), value: edition ? edition.roman_numeral : "-", delta: edition ? edition.year.toString() : "-", type: "text" },
-          { label: t('hero.stats.categories'), value: stats.categories.toString(), delta: "+2 " + t('hero.stats.thisYear'), type: "up" },
-          { label: t('hero.stats.laureates'), value: stats.laureates.toString(), delta: "+28 " + t('hero.stats.lastYear'), type: "up" },
-          { label: t('hero.stats.prizePool'), value: edition && edition.total_budget_fcfa ? (edition.total_budget_fcfa / 1000000) + 'M' : "-", delta: "FCFA", type: "text" }
+          { label: t('hero.stats.edition'), value: edition ? edition.roman_numeral : "-" },
+          { label: t('hero.stats.categories'), value: stats.categories.toString() },
+          { label: t('hero.stats.laureates'), value: stats.laureates.toString() },
+          { label: t('hero.stats.prizePool'), value: edition && edition.total_budget_fcfa ? (edition.total_budget_fcfa / 1000000) + 'M' : "-" }
         ].map((stat, i) => (
           <div key={i} className="bento-card col-span-3 md:col-span-1.5 flex flex-col justify-center p-6" style={{ gridColumn: 'span ' + (window.innerWidth < 768 ? '3' : '1.5') }}>
             <span className="font-mono text-xs text-[var(--color-minesec-text-muted)] uppercase tracking-wider mb-2">{stat.label}</span>
             <div className="flex items-end justify-between">
               <span className="text-3xl md:text-4xl font-bold font-sans">{stat.value}</span>
-              <span className={`font-mono text-[10px] ${stat.type === 'up' ? 'text-green-400' : 'text-[var(--color-minesec-gold)]'}`}>
-                {stat.delta}
-              </span>
             </div>
           </div>
         ))}

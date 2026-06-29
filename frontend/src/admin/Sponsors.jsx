@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../utils/api';
 import { Plus, X } from 'lucide-react';
+import { API_BASE } from '../config';
 
 const Sponsors = () => {
   const [sponsors, setSponsors] = useState([]);
@@ -87,7 +88,7 @@ const Sponsors = () => {
                 <tr key={sponsor.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="p-4">
                     {sponsor.logo_storage_key ? (
-                      <img src={`http://localhost:3000/uploads/${sponsor.logo_storage_key}`} alt="Logo" className="h-8 object-contain" />
+                      <img src={`${API_BASE}/uploads/${sponsor.logo_storage_key}`} alt="Logo" className="h-8 object-contain" />
                     ) : (
                       <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-xs text-white/50">N/A</div>
                     )}

@@ -27,6 +27,7 @@ router.post('/public/:categoryId', upload.array('documents', 5), applicationCont
 
 // Public endpoints
 router.get('/laureates/recent', applicationController.getRecentLaureates);
+router.get('/laureates/category/:categoryId', applicationController.getLaureatesByCategory);
 
 // Admin queries
 router.get('/category/:categoryId', applicationController.getCategoryApplications);

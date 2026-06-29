@@ -25,30 +25,29 @@ const Footer = () => {
           <div>
             <h4 className="font-mono text-xs text-[var(--color-minesec-gold)] mb-6 tracking-widest uppercase">{t('footer.platform')}</h4>
             <ul className="space-y-4 text-sm text-[var(--color-minesec-text-muted)]">
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.awardCategories')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.evalProcess')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.laureatesGallery')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.downloadBrochure')}</a></li>
+              <li><a href="/#categories" className="hover:text-white transition-colors">{t('footer.awardCategories')}</a></li>
+              <li><a href="/#timeline" className="hover:text-white transition-colors">{t('footer.evalProcess')}</a></li>
+              <li><a href="/#laureates" className="hover:text-white transition-colors">{t('footer.laureatesGallery')}</a></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-mono text-xs text-[var(--color-minesec-gold)] mb-6 tracking-widest uppercase">{t('footer.portals')}</h4>
             <ul className="space-y-4 text-sm text-[var(--color-minesec-text-muted)]">
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.candidate')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.schoolPrincipals')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.juryWorkspace')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.sponsorDashboard')}</a></li>
+              <li><a href="https://minesec.gov.cm" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">MINESEC</a></li>
+              <li><a href="https://play.google.com/store/apps/details?id=net.ndahi.minesec" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">NALINOV</a></li>
+              <li><a href="https://distance-learning.minesec.gov.cm" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">MINESEC Distance Learning Center</a></li>
+              <li><a href="https://play.google.com/store/apps/details?id=net.ndahi.minesecdlc" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">MINESEC Distance Learning Center App</a></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-mono text-xs text-[var(--color-minesec-gold)] mb-6 tracking-widest uppercase">{t('footer.legalHelp')}</h4>
             <ul className="space-y-4 text-sm text-[var(--color-minesec-text-muted)]">
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.privacy')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.terms')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.accessibility')}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t('footer.contact')}</a></li>
+              <li><a href="/privacy" className="hover:text-white transition-colors">{t('footer.privacy')}</a></li>
+              <li><a href="/terms" className="hover:text-white transition-colors">{t('footer.terms')}</a></li>
+              <li><a href="/accessibility" className="hover:text-white transition-colors">{t('footer.accessibility')}</a></li>
+              <li><a href="/contact" className="hover:text-white transition-colors">{t('footer.contact')}</a></li>
             </ul>
           </div>
         </div>

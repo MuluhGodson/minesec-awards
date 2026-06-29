@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 const TimelineSection = () => {
   const { t, language } = useLanguage();
@@ -9,7 +10,7 @@ const TimelineSection = () => {
   useEffect(() => {
     const fetchFlagshipTimeline = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/categories');
+        const response = await fetch(`${API_BASE}/api/categories`);
         const data = await response.json();
         if (data.status === 'success') {
           const flagship = data.data.find(c => c.is_flagship);
@@ -58,9 +59,9 @@ const TimelineSection = () => {
         {/* Removed Category Tabs - Now displaying Flagship Only */}
 
         {/* Timeline */}
-        <div className="relative pl-4 md:pl-8">
+        <div className="relative pl-4 md:pl-12">
           {/* Connecting Line */}
-          <div className="absolute top-0 bottom-0 left-[27px] md:left-[43px] w-px bg-white/10">
+          <div className="absolute top-0 bottom-0 left-[27px] md:left-[59px] w-px bg-white/10">
             <div className="absolute top-0 left-0 w-full bg-gradient-to-b from-[var(--color-minesec-gold)] to-[var(--color-minesec-gold-dark)] transition-all duration-1000" style={{ height: '60%' }}></div>
           </div>
 
@@ -89,8 +90,8 @@ const TimelineSection = () => {
                 </div>
 
                 {/* Left Side: Dates & Status (Desktop) */}
-                <div className="hidden md:flex flex-col items-end w-32 shrink-0 pt-1">
-                  <span className="font-mono text-xs text-[var(--color-minesec-text-muted)] text-right">{formatDateRange(step.starts_at, step.ends_at)}</span>
+                <div className="hidden md:flex flex-col items-end w-40 shrink-0 pt-1">
+                  <span className="font-mono text-[11px] text-[var(--color-minesec-text-muted)] text-right">{formatDateRange(step.starts_at, step.ends_at)}</span>
                   <span className={`mt-2 font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border ${
                     step.status === 'completed' ? 'border-[var(--color-minesec-gold)]/30 text-[var(--color-minesec-gold)] bg-[var(--color-minesec-gold)]/10' :
                     step.status === 'active' ? 'border-green-500/30 text-green-400 bg-green-500/10' :

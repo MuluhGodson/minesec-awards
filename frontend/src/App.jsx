@@ -11,6 +11,8 @@ import Home from './pages/Home';
 import CategoryDetails from './pages/CategoryDetails';
 import ApplicationForm from './pages/ApplicationForm';
 import EvaluationPortal from './pages/EvaluationPortal';
+import MarkdownPage from './pages/MarkdownPage';
+import Contact from './pages/Contact';
 
 // Admin Components
 import AdminLogin from './admin/Login';
@@ -71,6 +73,12 @@ function App() {
             <Route index element={<Home />} />
             <Route path="category/:id" element={<CategoryDetails />} />
             <Route path="apply/:categoryId" element={<ApplicationForm />} />
+            
+            {/* Legal & Contact Routes */}
+            <Route path="/privacy" element={<MarkdownPage fileUrl="/privacy-policy.md" title="Privacy Policy" />} />
+            <Route path="/terms" element={<MarkdownPage fileUrl="/terms-of-service.md" title="Terms of Service" />} />
+            <Route path="/accessibility" element={<MarkdownPage fileUrl="/accessibility.md" title="Accessibility Statement" />} />
+            <Route path="/contact" element={<Contact />} />
           </Route>
           
           <Route path="/evaluate" element={<EvaluationPortal />} />

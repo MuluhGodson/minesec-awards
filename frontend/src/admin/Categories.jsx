@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE } from '../config';
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -28,9 +29,9 @@ const Categories = () => {
   const fetchData = async () => {
     try {
       const [catRes, edRes, rtRes] = await Promise.all([
-        fetch('http://localhost:3000/api/categories'),
-        fetch('http://localhost:3000/api/editions'),
-        fetch('http://localhost:3000/api/recipient-types')
+        fetch(`${API_BASE}/api/categories`),
+        fetch(`${API_BASE}/api/editions`),
+        fetch(`${API_BASE}/api/recipient-types`)
       ]);
       const catData = await catRes.json();
       const edData = await edRes.json();
@@ -49,7 +50,7 @@ const Categories = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/api/categories', {
+      const res = await fetch(`${API_BASE}/api/categories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

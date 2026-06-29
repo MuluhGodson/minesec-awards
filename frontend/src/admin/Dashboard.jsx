@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE } from '../config';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -7,7 +8,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/dashboard/stats');
+        const response = await fetch(`${API_BASE}/api/dashboard/stats`);
         const data = await response.json();
         if (data.status === 'success') {
           setStats(data.data);

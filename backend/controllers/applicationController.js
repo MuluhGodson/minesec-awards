@@ -1,4 +1,5 @@
 const db = require('../db');
+const nodemailer = require('nodemailer');
 
 // Function to generate a random reference
 const generateReference = (editionYear, categoryCode) => {
@@ -10,13 +11,13 @@ exports.submitPublicApplication = async (req, res) => {
   try {
     const { categoryId } = req.params;
     const {
-      full_name, email, phone, dob, justification,
+      full_name, email, phone, dob, matricule, sex, justification,
       region, division, sub_division, school
     } = req.body;
 
     // Fetch category and edition info
     const catResult = await db.query(
-      'SELECT ac.code, e.id as edition_id, e.year FROM award_categories ac JOIN editions e ON ac.edition_id = e.id WHERE ac.id = $1',
+      'SELECT ac.code, ac.name_en, e.id as edition_id, e.year FROM award_categories ac JOIN editions e ON ac.edition_id = e.id WHERE ac.id = $1',
       [categoryId]
     );
 
@@ -28,7 +29,7 @@ exports.submitPublicApplication = async (req, res) => {
     const reference = generateReference(category.year, category.code);
 
     const applicationData = {
-      contact: { full_name, email, phone, dob },
+      contact: { full_name, email, phone, dob, matricule, sex },
       location: { region, division, sub_division, school },
       justification
     };
@@ -44,14 +45,96 @@ exports.submitPublicApplication = async (req, res) => {
 
     // Handle File Uploads
     if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        // Just store them locally in 'uploads/'
-        await db.query(
-          `INSERT INTO application_documents (application_id, kind, label, filename, storage_key, size_bytes, mime_type, checksum_sha256)
-           VALUES ($1, 'other', $2, $3, $4, $5, $6, 'no-checksum')`,
-          [applicationId, file.originalname, file.originalname, file.filename, file.size, file.mimetype]
-        );
+      const fs = require('fs');
+      const path = require('path');
+      const storageProvider = process.env.STORAGE_PROVIDER || 'local';
+
+      if (storageProvider === 'local') {
+        const baseUploadsDir = path.join(__dirname, '../uploads');
+        // We use category code and reference for folder structure
+        // Clean them just in case
+        const safeCatCode = category.code.replace(/[^a-z0-9]/gi, '_');
+        const safeRef = reference.replace(/[^a-z0-9-]/gi, '_');
+        
+        const targetDirRelative = path.join(safeCatCode, safeRef);
+        const targetDirPath = path.join(baseUploadsDir, targetDirRelative);
+        
+        if (!fs.existsSync(targetDirPath)) {
+          fs.mkdirSync(targetDirPath, { recursive: true });
+        }
+
+        for (const file of req.files) {
+          const finalRelativePath = path.join(targetDirRelative, file.filename);
+          const finalAbsolutePath = path.join(baseUploadsDir, finalRelativePath);
+
+          // Move file from temporary multer location to new folder
+          fs.renameSync(file.path, finalAbsolutePath);
+
+          const kind = file.originalname.startsWith('COVER_PHOTO_') ? 'photo' : 'other';
+
+          await db.query(
+            `INSERT INTO application_documents (application_id, kind, label, filename, storage_key, size_bytes, mime_type, checksum_sha256)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'no-checksum')`,
+            [applicationId, kind, file.originalname, file.originalname, finalRelativePath, file.size, file.mimetype]
+          );
+        }
+      } else if (storageProvider === 's3') {
+        console.log('S3 Storage Provider configured - moving files to bucket (Mock implementation)');
+        for (const file of req.files) {
+          const s3MockUrl = `https://s3.amazonaws.com/minesec-awards/${category.code}/${reference}/${file.filename}`;
+          const kind = file.originalname.startsWith('COVER_PHOTO_') ? 'photo' : 'other';
+          await db.query(
+            `INSERT INTO application_documents (application_id, kind, label, filename, storage_key, size_bytes, mime_type, checksum_sha256)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'no-checksum')`,
+            [applicationId, kind, file.originalname, file.originalname, s3MockUrl, file.size, file.mimetype]
+          );
+        }
       }
+    }
+
+    // Send confirmation email
+    try {
+      const transporterConfig = {
+        host: process.env.SMTP_HOST || '127.0.0.1',
+        port: process.env.SMTP_PORT || 1025,
+        secure: process.env.SMTP_SECURE === 'true',
+        ignoreTLS: process.env.SMTP_SECURE !== 'true',
+      };
+      
+      if (process.env.SMTP_USER && process.env.SMTP_USER.trim() !== '') {
+        transporterConfig.auth = {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        };
+      }
+
+      const transporter = nodemailer.createTransport(transporterConfig);
+      const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@minesec.cm';
+      
+      const mailOptions = {
+        from: `"MINESEC Awards" <${fromEmail}>`,
+        to: email,
+        subject: `Application Received - ${category.name_en}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Dear ${full_name},</h2>
+            <p>Thank you for submitting your application for the <strong>${category.name_en}</strong> category.</p>
+            <p>Your application has been successfully received. Please keep the following tracking number for your records:</p>
+            <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; text-align: center; font-family: monospace; font-size: 24px; letter-spacing: 2px; margin: 20px 0;">
+              ${reference}
+            </div>
+            <p>We will review your application and keep you updated on its status.</p>
+            <br>
+            <p>Best regards,</p>
+            <p><strong>MINESEC Awards Committee</strong></p>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`Successfully sent confirmation email to ${email}`);
+    } catch (emailError) {
+      console.error('Error sending confirmation email:', emailError);
     }
 
     res.status(201).json({ status: 'success', data: { reference, id: applicationId } });
@@ -194,7 +277,9 @@ exports.getRecentLaureates = async (req, res) => {
         a.data as application_data,
         e.year,
         ac.name_en as category_name_en,
-        ac.code as category_code
+        ac.name_fr as category_name_fr,
+        ac.code as category_code,
+        (SELECT storage_key FROM application_documents d WHERE d.application_id = a.id AND d.kind = 'photo' LIMIT 1) as photo_url
       FROM laureates l
       JOIN applications a ON l.application_id = a.id
       JOIN editions e ON l.edition_id = e.id
@@ -206,6 +291,37 @@ exports.getRecentLaureates = async (req, res) => {
     res.json({ status: 'success', data: result.rows });
   } catch (err) {
     console.error('Error fetching recent laureates:', err);
+    res.status(500).json({ status: 'error', message: 'Database error' });
+  }
+};
+
+exports.getLaureatesByCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const result = await db.query(`
+      SELECT 
+        l.id as laureate_id,
+        l.rank,
+        a.reference,
+        a.data as application_data,
+        e.year,
+        ac.name_en as category_name_en,
+        ac.name_fr as category_name_fr,
+        ac.code as category_code,
+        cp.name_en as prize_name_en,
+        cp.name_fr as prize_name_fr,
+        (SELECT storage_key FROM application_documents d WHERE d.application_id = a.id AND d.kind = 'photo' LIMIT 1) as photo_url
+      FROM laureates l
+      JOIN applications a ON l.application_id = a.id
+      JOIN editions e ON l.edition_id = e.id
+      JOIN award_categories ac ON l.category_id = ac.id
+      LEFT JOIN category_prizes cp ON l.category_id = cp.category_id AND l.rank = cp.position
+      WHERE l.category_id = $1 AND l.public_profile = TRUE
+      ORDER BY l.rank ASC
+    `, [categoryId]);
+    res.json({ status: 'success', data: result.rows });
+  } catch (err) {
+    console.error('Error fetching laureates by category:', err);
     res.status(500).json({ status: 'error', message: 'Database error' });
   }
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 const REGION_CODES = {
   "1": "CE", "2": "LT", "3": "OU", "4": "NW", "5": "SW",
@@ -14,7 +15,7 @@ const LaureatesGallery = () => {
   useEffect(() => {
     const fetchLaureates = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/applications/laureates/recent');
+        const response = await fetch(`${API_BASE}/api/applications/laureates/recent`);
         const data = await response.json();
         if (data.status === 'success') {
           setLaureates(data.data);
@@ -70,29 +71,24 @@ const LaureatesGallery = () => {
                       {laureate.year}
                     </span>
                   </div>
-                  
-                  <h4 className="text-2xl font-bold mb-3">
-                    {accent ? (
-                      <>
-                        {nameParts.slice(0, -1).join(' ')} <span className="font-serif italic font-normal text-white">{accent}</span>
-                      </>
+                  <div className="flex items-center gap-4 mb-2">
+                    {laureate.photo_url ? (
+                      <img src={`${API_BASE}/uploads/${laureate.photo_url}`} alt={name} className="w-16 h-16 rounded-full object-cover border border-[var(--color-minesec-gold)]/30" />
                     ) : (
-                      <>{name}</>
+                      <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-xl text-[var(--color-minesec-gold)]">
+                        {name.charAt(0)}
+                      </div>
                     )}
-                  </h4>
-                  
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className="font-mono text-[10px] text-black bg-[var(--color-minesec-text-muted)] px-1.5 rounded font-bold">
-                      {regionCode}
-                    </span>
-                    <span className="text-sm text-[var(--color-minesec-text-muted)] font-medium">
-                      {location.school || t('laureates.independent')}
-                    </span>
+                    <h4 className="text-2xl font-bold">
+                      {accent ? (
+                        <>
+                          {nameParts.slice(0, -1).join(' ')} <span className="font-serif italic font-normal text-white">{accent}</span>
+                        </>
+                      ) : (
+                        <>{name}</>
+                      )}
+                    </h4>
                   </div>
-
-                  <p className="text-[var(--color-minesec-text-muted)] text-sm leading-relaxed mb-8 line-clamp-3">
-                    {appData.justification || t('laureates.defaultDesc')}
-                  </p>
                 </div>
 
               <div className="flex items-center justify-between border-t border-white/5 pt-4">

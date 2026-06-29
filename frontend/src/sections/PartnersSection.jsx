@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 const PartnersSection = () => {
   const { t } = useLanguage();
@@ -9,7 +10,7 @@ const PartnersSection = () => {
   useEffect(() => {
     const fetchSponsors = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/sponsors');
+        const response = await fetch(`${API_BASE}/api/sponsors`);
         const data = await response.json();
         if (data.status === 'success') {
           // Only show public sponsors on the landing page
@@ -76,7 +77,7 @@ const PartnersSection = () => {
                 
                 {sponsor.logo_storage_key ? (
                   <img 
-                    src={`http://localhost:3000/uploads/${sponsor.logo_storage_key}`} 
+                    src={`${API_BASE}/uploads/${sponsor.logo_storage_key}`} 
                     alt={`${sponsor.name} logo`} 
                     className="h-16 object-contain mb-4 grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
                   />

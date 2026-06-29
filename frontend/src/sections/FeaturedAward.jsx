@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 const FeaturedAward = () => {
   const { t, language } = useLanguage();
@@ -10,7 +11,7 @@ const FeaturedAward = () => {
   useEffect(() => {
     const fetchFlagship = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/categories');
+        const response = await fetch(`${API_BASE}/api/categories`);
         const data = await response.json();
         if (data.status === 'success') {
           const flagship = data.data.find(c => c.is_flagship);

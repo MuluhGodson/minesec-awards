@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 const StatusPill = ({ status }) => {
   const { t } = useLanguage();
@@ -33,7 +34,7 @@ const CategoriesSection = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/categories');
+        const response = await fetch(`${API_BASE}/api/categories`);
         const data = await response.json();
         if (data.status === 'success') {
           setCategories(data.data);

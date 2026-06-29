@@ -96,7 +96,10 @@ export const translations = {
       supportedBy: "Supported By",
       noRules: "No specific rules have been provided for this category.",
       noRubric: "No evaluation rubric has been configured for this category.",
-      noTimeline: "No specific timeline events defined for this category."
+      noTimeline: "No specific timeline events defined for this category.",
+      winners: "Winners",
+      noWinnersTitle: "Winners Not Yet Announced",
+      noWinnersDesc: "The laureates for this category have not been selected yet. Please check back after the evaluation period."
     },
     applicationForm: {
       back: "Back to Category",
@@ -295,7 +298,10 @@ export const translations = {
       supportedBy: "Soutenu Par",
       noRules: "Aucune règle spécifique n'a été fournie pour cette catégorie.",
       noRubric: "Aucune grille d'évaluation n'a été configurée pour cette catégorie.",
-      noTimeline: "Aucun événement chronologique spécifique défini pour cette catégorie."
+      noTimeline: "Aucun événement chronologique spécifique défini pour cette catégorie.",
+      winners: "Lauréats",
+      noWinnersTitle: "Lauréats Non Encore Annoncés",
+      noWinnersDesc: "Les lauréats pour cette catégorie n'ont pas encore été sélectionnés. Veuillez vérifier après la période d'évaluation."
     },
     applicationForm: {
       back: "Retour à la Catégorie",

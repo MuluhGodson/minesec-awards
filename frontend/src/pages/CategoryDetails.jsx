@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 const StatusPill = ({ status }) => {
   const styles = {
@@ -31,6 +32,7 @@ const CategoryDetails = () => {
   const [timeline, setTimeline] = useState([]);
   const [prizes, setPrizes] = useState([]);
   const [sponsors, setSponsors] = useState([]);
+  const [laureates, setLaureates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -39,17 +41,19 @@ const CategoryDetails = () => {
     
     const fetchCategory = async () => {
       try {
-        const [catRes, timeRes, prizeRes, sponsorRes] = await Promise.all([
-          fetch(`http://localhost:3000/api/categories/${id}`),
-          fetch(`http://localhost:3000/api/categories/${id}/timeline`),
-          fetch(`http://localhost:3000/api/categories/${id}/prizes`),
-          fetch(`http://localhost:3000/api/categories/${id}/sponsors`)
+        const [catRes, timeRes, prizeRes, sponsorRes, laureatesRes] = await Promise.all([
+          fetch(`${API_BASE}/api/categories/${id}`),
+          fetch(`${API_BASE}/api/categories/${id}/timeline`),
+          fetch(`${API_BASE}/api/categories/${id}/prizes`),
+          fetch(`${API_BASE}/api/categories/${id}/sponsors`),
+          fetch(`${API_BASE}/api/applications/laureates/category/${id}`)
         ]);
         
         const catData = await catRes.json();
         const timeData = await timeRes.json();
         const prizeData = await prizeRes.json();
         const sponsorData = await sponsorRes.json();
+        const laureatesData = await laureatesRes.json();
         
         if (catData.status === 'success') {
           setCategory(catData.data);
@@ -59,6 +63,9 @@ const CategoryDetails = () => {
         }
         if (prizeData.status === 'success') {
           setPrizes(prizeData.data.sort((a, b) => a.position - b.position));
+        }
+        if (laureatesData.status === 'success') {
+          setLaureates(laureatesData.data);
         }
         if (sponsorData.status === 'success') {
           setSponsors(sponsorData.data);
@@ -162,6 +169,13 @@ const CategoryDetails = () => {
               {t('categoryDetails.prizes')}
               {activeTab === 'prizes' && <div className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-[var(--color-minesec-gold)]"></div>}
             </button>
+            <button 
+              onClick={() => setActiveTab('winners')}
+              className={`pb-4 text-sm font-bold uppercase tracking-wider transition-colors relative ${activeTab === 'winners' ? 'text-[var(--color-minesec-gold)]' : 'text-[var(--color-minesec-text-muted)] hover:text-white'}`}
+            >
+              {t('categoryDetails.winners') || 'Winners'}
+              {activeTab === 'winners' && <div className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-[var(--color-minesec-gold)]"></div>}
+            </button>
           </div>
         </div>
 
@@ -185,7 +199,7 @@ const CategoryDetails = () => {
                         <div key={sponsor.id} className="group relative flex flex-col items-center">
                           {sponsor.logo_storage_key ? (
                             <img 
-                              src={`http://localhost:3000/uploads/${sponsor.logo_storage_key}`} 
+                              src={`${API_BASE}/uploads/${sponsor.logo_storage_key}`} 
                               alt={sponsor.name} 
                               className="h-16 md:h-20 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
                             />
@@ -319,6 +333,50 @@ const CategoryDetails = () => {
                   ) : (
                     <div className="text-center text-[var(--color-minesec-text-muted)] py-12">
                       <p>Prize details are currently being finalized.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'winners' && (
+              <div className="space-y-6">
+                <div className="bento-card p-8 md:p-12 border-white/5">
+                  <h3 className="text-2xl font-bold mb-8 text-center">{t('categoryDetails.winners') || 'Laureates'}</h3>
+                  {laureates.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {laureates.map((laureate, i) => {
+                        const appData = laureate.application_data || {};
+                        const contact = appData.contact || {};
+                        const location = appData.location || {};
+                        const name = contact.full_name || 'Anonymous';
+                        
+                        return (
+                          <div key={i} className="bento-card p-6 border-white/5 relative overflow-hidden flex flex-col items-center text-center">
+                            <div className="absolute top-4 right-4 bg-[var(--color-minesec-gold)] text-black text-[10px] font-bold px-2 py-1 rounded font-mono uppercase">
+                              {laureate[`prize_name_${language}`] || laureate.prize_name_en || `${laureate.rank}${laureate.rank === 1 ? 'st' : laureate.rank === 2 ? 'nd' : laureate.rank === 3 ? 'rd' : 'th'} Prize`}
+                            </div>
+                            {laureate.photo_url ? (
+                              <img src={`${API_BASE}/uploads/${laureate.photo_url}`} alt={name} className="w-24 h-24 rounded-full object-cover border-2 border-[var(--color-minesec-gold)]/30 mb-4" />
+                            ) : (
+                              <div className="w-24 h-24 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center font-bold text-3xl text-[var(--color-minesec-gold)] mb-4">
+                                {name.charAt(0)}
+                              </div>
+                            )}
+                            <h4 className="text-xl font-bold mb-1">{name}</h4>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center border-white/5 flex flex-col items-center py-8">
+                      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 border border-white/10">
+                        <span className="text-2xl text-[var(--color-minesec-text-muted)]">🏆</span>
+                      </div>
+                      <h4 className="text-xl font-bold mb-2">{t('categoryDetails.noWinnersTitle') || 'Winners Not Yet Announced'}</h4>
+                      <p className="text-[var(--color-minesec-text-muted)] max-w-md">
+                        {t('categoryDetails.noWinnersDesc') || 'The laureates for this category have not been selected yet. Please check back after the evaluation period.'}
+                      </p>
                     </div>
                   )}
                 </div>

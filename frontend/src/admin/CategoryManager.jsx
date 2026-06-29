@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, GripVertical, X, Pencil, ExternalLink, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, GripVertical, X, Pencil, ExternalLink, CheckCircle, Users, FileText, BarChart, Mail } from 'lucide-react';
 import Editor from 'react-simple-wysiwyg';
+import { API_BASE } from '../config';
 
 const CategoryManager = () => {
   const { id } = useParams();
@@ -19,7 +20,7 @@ const CategoryManager = () => {
   const [formData, setFormData] = useState({});
   const [timelineFormData, setTimelineFormData] = useState({
     position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming',
-    requires_jury: false, is_unlimited_candidates: true, max_candidates: ''
+    requires_jury: false, is_unlimited_candidates: true, max_candidates: '', selects_winners: false
   });
   const [sponsorFormData, setSponsorFormData] = useState({
     sponsor_id: '', is_primary: false, contribution_fcfa: ''
@@ -39,6 +40,11 @@ const CategoryManager = () => {
   const [juryMembers, setJuryMembers] = useState([]);
   const [newJuryEmail, setNewJuryEmail] = useState('');
   const [isJuryModalOpen, setIsJuryModalOpen] = useState(false);
+  
+  // Votes States
+  const [isVotesModalOpen, setIsVotesModalOpen] = useState(false);
+  const [stepVotes, setStepVotes] = useState([]);
+  const [activeVotesStep, setActiveVotesStep] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -47,12 +53,12 @@ const CategoryManager = () => {
   const fetchData = async () => {
     try {
       const [catRes, timeRes, sponsorsRes, allSponsorsRes, prizesRes, appsRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/categories/${id}`),
-        fetch(`http://localhost:3000/api/categories/${id}/timeline`),
-        fetch(`http://localhost:3000/api/categories/${id}/sponsors`),
-        fetch(`http://localhost:3000/api/sponsors`),
-        fetch(`http://localhost:3000/api/categories/${id}/prizes`),
-        fetch(`http://localhost:3000/api/applications/category/${id}`)
+        fetch(`${API_BASE}/api/categories/${id}`),
+        fetch(`${API_BASE}/api/categories/${id}/timeline`),
+        fetch(`${API_BASE}/api/categories/${id}/sponsors`),
+        fetch(`${API_BASE}/api/sponsors`),
+        fetch(`${API_BASE}/api/categories/${id}/prizes`),
+        fetch(`${API_BASE}/api/applications/category/${id}`)
       ]);
       const catData = await catRes.json();
       const timeData = await timeRes.json();
@@ -81,7 +87,7 @@ const CategoryManager = () => {
   const handleCategorySave = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:3000/api/categories/${id}`, {
+      const res = await fetch(`${API_BASE}/api/categories/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -96,7 +102,10 @@ const CategoryManager = () => {
           rules_fr: formData.rules_fr,
           rubric_en: formData.rubric_en,
           rubric_fr: formData.rubric_fr,
-          display_order: formData.display_order
+          display_order: formData.display_order,
+          applications_open_at: formData.applications_open_at,
+          applications_close_at: formData.applications_close_at,
+          is_always_open: formData.is_always_open
         })
       });
       if (res.ok) {
@@ -116,11 +125,12 @@ const CategoryManager = () => {
       const payload = { ...timelineFormData };
       if (!payload.starts_at) delete payload.starts_at;
       if (!payload.ends_at) delete payload.ends_at;
+      if (payload.max_candidates === '') payload.max_candidates = null;
 
       const method = editingStepId ? 'PUT' : 'POST';
       const url = editingStepId 
-        ? `http://localhost:3000/api/categories/${id}/timeline/${editingStepId}`
-        : `http://localhost:3000/api/categories/${id}/timeline`;
+        ? `${API_BASE}/api/categories/${id}/timeline/${editingStepId}`
+        : `${API_BASE}/api/categories/${id}/timeline`;
 
       const res = await fetch(url, {
         method: method,
@@ -130,7 +140,7 @@ const CategoryManager = () => {
       if (res.ok) {
         setIsAddingTimeline(false);
         setEditingStepId(null);
-        setTimelineFormData({ position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming', requires_jury: false, is_unlimited_candidates: true, max_candidates: '' });
+        setTimelineFormData({ position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming', requires_jury: false, is_unlimited_candidates: true, max_candidates: '', selects_winners: false });
         fetchData();
       }
     } catch (error) {
@@ -150,6 +160,7 @@ const CategoryManager = () => {
       ends_at: step.ends_at ? new Date(step.ends_at).toISOString().slice(0, 16) : '',
       status: step.status || 'upcoming',
       requires_jury: step.requires_jury || false,
+      selects_winners: step.selects_winners || false,
       is_unlimited_candidates: step.is_unlimited_candidates !== false,
       max_candidates: step.max_candidates || ''
     });
@@ -159,7 +170,7 @@ const CategoryManager = () => {
   const deleteTimelineStep = async (stepId) => {
     if (!window.confirm('Are you sure you want to delete this step?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${stepId}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/categories/${id}/timeline/${stepId}`, { method: 'DELETE' });
       if (res.ok) fetchData();
     } catch (error) { console.error('Error deleting step:', error); }
   };
@@ -173,7 +184,7 @@ const CategoryManager = () => {
 
   const fetchJuryMembers = async (stepId) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${stepId}/jury`);
+      const res = await fetch(`${API_BASE}/api/categories/${id}/timeline/${stepId}/jury`);
       const data = await res.json();
       if (data.status === 'success') setJuryMembers(data.data);
     } catch (error) {
@@ -185,7 +196,7 @@ const CategoryManager = () => {
     e.preventDefault();
     if (!newJuryEmail) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${activeJuryStep.id}/jury`, {
+      const res = await fetch(`${API_BASE}/api/categories/${id}/timeline/${activeJuryStep.id}/jury`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newJuryEmail })
@@ -205,7 +216,7 @@ const CategoryManager = () => {
   const removeJuryMember = async (juryId) => {
     if (!window.confirm('Remove this jury member?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${activeJuryStep.id}/jury/${juryId}`, {
+      const res = await fetch(`${API_BASE}/api/categories/${id}/timeline/${activeJuryStep.id}/jury/${juryId}`, {
         method: 'DELETE'
       });
       if (res.ok) fetchJuryMembers(activeJuryStep.id);
@@ -217,7 +228,7 @@ const CategoryManager = () => {
   const triggerAdvancement = async (stepId) => {
     if (!window.confirm('Are you sure you want to tally votes and advance candidates? This cannot be undone.')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/categories/${id}/timeline/${stepId}/advance-candidates`, {
+      const res = await fetch(`${API_BASE}/api/categories/${id}/timeline/${stepId}/advance-candidates`, {
         method: 'POST'
       });
       const data = await res.json();
@@ -232,14 +243,43 @@ const CategoryManager = () => {
     }
   };
 
+  const openVotesModal = async (step) => {
+    setActiveVotesStep(step);
+    setIsVotesModalOpen(true);
+    setStepVotes([]);
+    try {
+      const res = await fetch(`${API_BASE}/api/categories/${id}/timeline/${step.id}/votes`);
+      const data = await res.json();
+      if (res.ok) setStepVotes(data.data);
+    } catch (error) {
+      console.error('Error fetching step votes:', error);
+    }
+  };
+
+  const handleCongratulateWinners = async () => {
+    if (!window.confirm('Are you sure you want to send congratulatory emails to all winners in this category?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/categories/${id}/congratulate`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+      } else {
+        alert(data.message || 'Failed to send emails');
+      }
+    } catch (error) {
+      console.error('Error sending congratulatory emails:', error);
+      alert('An error occurred while sending emails.');
+    }
+  };
+
   const handlePrizeSubmit = async (e) => {
     e.preventDefault();
     try {
       const payload = { ...prizeFormData };
       const method = editingPrizeId ? 'PUT' : 'POST';
       const url = editingPrizeId 
-        ? `http://localhost:3000/api/categories/${id}/prizes/${editingPrizeId}`
-        : `http://localhost:3000/api/categories/${id}/prizes`;
+        ? `${API_BASE}/api/categories/${id}/prizes/${editingPrizeId}`
+        : `${API_BASE}/api/categories/${id}/prizes`;
 
       const res = await fetch(url, {
         method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
@@ -268,7 +308,7 @@ const CategoryManager = () => {
   const deletePrize = async (prizeId) => {
     if (!window.confirm('Are you sure you want to delete this prize?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/categories/${id}/prizes/${prizeId}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/categories/${id}/prizes/${prizeId}`, { method: 'DELETE' });
       if (res.ok) fetchData();
     } catch (error) { console.error('Error deleting prize:', error); }
   };
@@ -276,7 +316,7 @@ const CategoryManager = () => {
   const handleShortlist = async (appId) => {
     if (!window.confirm('Mark this candidate as a finalist?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/applications/${appId}/shortlist`, { method: 'PUT' });
+      const res = await fetch(`${API_BASE}/api/applications/${appId}/shortlist`, { method: 'PUT' });
       if (res.ok) {
         setSelectedApplication(null);
         fetchData();
@@ -288,7 +328,7 @@ const CategoryManager = () => {
     if (!winnerPrizeSelection) return alert('Please select a prize to award.');
     if (!window.confirm('Assign this prize and select candidate as winner?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/applications/${appId}/select-winner`, { 
+      const res = await fetch(`${API_BASE}/api/applications/${appId}/select-winner`, { 
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prizeId: winnerPrizeSelection })
@@ -303,7 +343,7 @@ const CategoryManager = () => {
   const handleRevokeShortlist = async (appId) => {
     if (!window.confirm('Are you sure you want to revoke the shortlisted status for this candidate?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/applications/${appId}/revoke-shortlist`, { method: 'PUT' });
+      const res = await fetch(`${API_BASE}/api/applications/${appId}/revoke-shortlist`, { method: 'PUT' });
       if (res.ok) {
         fetchData();
       }
@@ -313,7 +353,7 @@ const CategoryManager = () => {
   const handleRevokeWinner = async (appId) => {
     if (!window.confirm('Are you sure you want to revoke the winner status for this candidate?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/applications/${appId}/revoke-winner`, { method: 'PUT' });
+      const res = await fetch(`${API_BASE}/api/applications/${appId}/revoke-winner`, { method: 'PUT' });
       if (res.ok) {
         fetchData();
       }
@@ -326,7 +366,7 @@ const CategoryManager = () => {
       const payload = { ...sponsorFormData };
       if (!payload.contribution_fcfa) delete payload.contribution_fcfa;
       
-      const res = await fetch(`http://localhost:3000/api/categories/${id}/sponsors`, {
+      const res = await fetch(`${API_BASE}/api/categories/${id}/sponsors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -341,7 +381,7 @@ const CategoryManager = () => {
   const removeSponsor = async (sponsorId) => {
     if (!window.confirm('Are you sure you want to unlink this sponsor?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/categories/${id}/sponsors/${sponsorId}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/categories/${id}/sponsors/${sponsorId}`, { method: 'DELETE' });
       if (res.ok) fetchData();
     } catch (error) { console.error('Error removing sponsor:', error); }
   };
@@ -349,9 +389,16 @@ const CategoryManager = () => {
   if (loading) return <div className="p-8 text-white font-mono">Loading Category...</div>;
   if (!category) return <div className="p-8 text-red-400 font-mono">Category Not Found</div>;
 
-  const finalistApplications = applications.filter(a => a.status === 'finalist');
   const laureateApplications = applications.filter(a => a.status === 'laureate');
-  const shortlistedApplications = applications.filter(a => a.status === 'finalist' || a.status === 'laureate');
+  
+  // Determine shortlist step dynamically
+  const winnerStep = timeline.find(s => s.selects_winners);
+  const shortlistStep = winnerStep ? timeline.find(s => s.position === winnerStep.position - 1) : null;
+  
+  const shortlistedApplications = shortlistStep 
+    ? applications.filter(a => a.data?.current_step_id === shortlistStep.id || a.status === 'laureate')
+    : applications.filter(a => a.status === 'finalist' || a.status === 'laureate');
+    
   const newApplicationsCount = applications.filter(a => a.status === 'submitted').length;
 
   return (
@@ -575,7 +622,7 @@ const CategoryManager = () => {
               <button 
                 onClick={() => {
                   if (isAddingTimeline) { setIsAddingTimeline(false); setEditingStepId(null); }
-                  else { setTimelineFormData({ position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming', requires_jury: false, is_unlimited_candidates: true, max_candidates: '' }); setEditingStepId(null); setIsAddingTimeline(true); }
+                  else { setTimelineFormData({ position: '', name_en: '', name_fr: '', description_en: '', description_fr: '', starts_at: '', ends_at: '', status: 'upcoming', requires_jury: false, is_unlimited_candidates: true, max_candidates: '', selects_winners: false }); setEditingStepId(null); setIsAddingTimeline(true); }
                 }}
                 className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
               >
@@ -631,6 +678,23 @@ const CategoryManager = () => {
                       <div className="flex items-center gap-2">
                         <input 
                           type="checkbox" 
+                          checked={timelineFormData.selects_winners} 
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setTimelineFormData({
+                              ...timelineFormData, 
+                              selects_winners: isChecked,
+                              requires_jury: isChecked ? true : timelineFormData.requires_jury
+                            });
+                          }} 
+                          id="selectsWinners" 
+                        />
+                        <label htmlFor="selectsWinners" className="text-sm font-bold text-[var(--color-minesec-gold)] cursor-pointer">Winners are selected at this stage</label>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
                           checked={timelineFormData.requires_jury} 
                           onChange={(e) => setTimelineFormData({...timelineFormData, requires_jury: e.target.checked})} 
                           id="reqJury" 
@@ -683,11 +747,19 @@ const CategoryManager = () => {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <button onClick={() => handleEditStep(step)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-white opacity-0 group-hover:opacity-100 transition-all" title="Edit Step"><Pencil size={18} /></button>
-                      {step.requires_jury && (
-                        <button onClick={() => openJuryModal(step)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-[var(--color-minesec-gold)] opacity-0 group-hover:opacity-100 transition-all" title="Manage Jury"><Users size={18} /></button>
+                      {step.selects_winners && (
+                        <div className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 whitespace-nowrap">
+                          WINNER SELECTION
+                        </div>
                       )}
-                      <button onClick={() => deleteTimelineStep(step.id)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" title="Delete Step"><Trash2 size={18} /></button>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditStep(step)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-white opacity-0 group-hover:opacity-100 transition-all" title="Edit Step"><Pencil size={18} /></button>
+                        <button onClick={() => openVotesModal(step)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all" title="View Votes"><BarChart size={18} /></button>
+                        {step.requires_jury && (
+                          <button onClick={() => openJuryModal(step)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-[var(--color-minesec-gold)] opacity-0 group-hover:opacity-100 transition-all" title="Manage Jury"><Users size={18} /></button>
+                        )}
+                        <button onClick={() => deleteTimelineStep(step.id)} className="p-2 text-[var(--color-minesec-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" title="Delete Step"><Trash2 size={18} /></button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -807,7 +879,7 @@ const CategoryManager = () => {
                 {sponsors.map(sponsor => (
                   <div key={sponsor.id} className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl">
                     {sponsor.logo_storage_key ? (
-                      <img src={`http://localhost:3000/uploads/${sponsor.logo_storage_key}`} alt={sponsor.name} className="w-10 h-10 object-contain rounded" />
+                      <img src={`${API_BASE}/uploads/${sponsor.logo_storage_key}`} alt={sponsor.name} className="w-10 h-10 object-contain rounded" />
                     ) : (
                       <div className="w-10 h-10 bg-white/10 rounded flex items-center justify-center font-mono text-xs">IMG</div>
                     )}
@@ -916,45 +988,49 @@ const CategoryManager = () => {
       {/* Winners Tab */}
       {activeTab === 'winners' && (
         <div className="bento-card p-0 overflow-hidden">
-          <div className="p-6 border-b border-white/10">
+          <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
             <h3 className="text-lg font-bold text-green-400">Selected Winners ({laureateApplications.length})</h3>
+            {laureateApplications.length > 0 && (
+              <button onClick={handleCongratulateWinners} className="flex items-center gap-2 px-4 py-2 bg-[var(--color-minesec-gold)] text-black rounded font-bold text-sm hover:bg-white transition-colors">
+                <Mail size={16} /> Send Congratulatory Emails
+              </button>
+            )}
           </div>
           {laureateApplications.length === 0 ? (
             <div className="p-12 text-center text-[var(--color-minesec-text-muted)] font-mono">No winners have been selected yet.</div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-white/5 text-[var(--color-minesec-text-muted)] font-mono uppercase text-xs">
-                <tr>
-                  <th className="p-4 font-normal tracking-wider">Reference</th>
-                  <th className="p-4 font-normal tracking-wider">Applicant Name</th>
-                  <th className="p-4 font-normal tracking-wider">Awarded Prize</th>
-                  <th className="p-4 font-normal tracking-wider text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {laureateApplications.map(app => {
-                  const laureateInfo = app.laureates ? app.laureates[0] : null;
-                  const prizeInfo = prizes.find(p => p.position === laureateInfo?.rank);
-                  return (
-                    <tr key={app.id} className="bg-green-500/5 hover:bg-green-500/10 transition-colors">
-                      <td className="p-4 font-mono text-green-400">
-                        <div className="flex items-center gap-2"><CheckCircle size={16} /> {app.reference}</div>
-                      </td>
-                      <td className="p-4 font-bold">{app.data.contact?.full_name || 'Anonymous'}</td>
-                      <td className="p-4 text-[var(--color-minesec-text-muted)] font-mono text-xs">
-                        {prizeInfo ? prizeInfo.name_en : `Rank ${laureateInfo?.rank}`}
-                      </td>
-                      <td className="p-4">
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => handleRevokeWinner(app.id)} className="px-3 py-1 bg-white/5 text-[var(--color-minesec-text-muted)] hover:bg-red-500/20 hover:text-red-400 rounded font-mono text-xs transition-colors">Revoke Winner</button>
-                          <button onClick={() => setSelectedApplication(app)} className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded font-mono text-xs transition-colors">Review</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+              {laureateApplications.map(app => {
+                const laureateInfo = app.laureates ? app.laureates[0] : null;
+                const prizeInfo = prizes.find(p => p.position === laureateInfo?.rank);
+                const photoDoc = app.documents?.find(d => d.kind === 'photo');
+                const photoUrl = photoDoc ? photoDoc.storage_key : null;
+                const name = app.data.contact?.full_name || 'Anonymous';
+                
+                return (
+                  <div key={app.id} className="bento-card p-6 border-white/5 relative overflow-hidden flex flex-col items-center text-center">
+                    <div className="absolute top-4 right-4 bg-[var(--color-minesec-gold)] text-black text-[10px] font-bold px-2 py-1 rounded font-mono uppercase">
+                      {prizeInfo ? prizeInfo.name_en : `Rank ${laureateInfo?.rank}`}
+                    </div>
+                    
+                    {photoUrl ? (
+                      <img src={`${API_BASE}/uploads/${photoUrl}`} alt={name} className="w-24 h-24 rounded-full object-cover border-2 border-[var(--color-minesec-gold)]/30 mb-4" />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center font-bold text-3xl text-[var(--color-minesec-gold)] mb-4">
+                        {name.charAt(0)}
+                      </div>
+                    )}
+                    
+                    <h4 className="text-xl font-bold mb-6">{name}</h4>
+                    
+                    <div className="flex gap-2 w-full mt-auto">
+                      <button onClick={() => handleRevokeWinner(app.id)} className="flex-1 py-2 bg-white/5 text-[var(--color-minesec-text-muted)] hover:bg-red-500/20 hover:text-red-400 rounded font-mono text-xs transition-colors">Revoke</button>
+                      <button onClick={() => setSelectedApplication(app)} className="flex-1 py-2 bg-[var(--color-minesec-gold)]/20 text-[var(--color-minesec-gold)] hover:bg-[var(--color-minesec-gold)] hover:text-black rounded font-mono text-xs font-bold transition-colors">Review</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -977,6 +1053,8 @@ const CategoryManager = () => {
                   <h4 className="text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Applicant Info</h4>
                   <div className="space-y-4">
                     <div><span className="block text-xs text-[var(--color-minesec-text-muted)]">Full Name</span><strong className="text-lg">{selectedApplication.data.contact?.full_name}</strong></div>
+                    <div><span className="block text-xs text-[var(--color-minesec-text-muted)]">Registration (Matricule)</span><span className="font-mono">{selectedApplication.data.contact?.matricule || 'N/A'}</span></div>
+                    <div><span className="block text-xs text-[var(--color-minesec-text-muted)]">Sex</span><span className="capitalize">{selectedApplication.data.contact?.sex || 'N/A'}</span></div>
                     <div><span className="block text-xs text-[var(--color-minesec-text-muted)]">Email</span><span>{selectedApplication.data.contact?.email}</span></div>
                     <div><span className="block text-xs text-[var(--color-minesec-text-muted)]">Phone</span><span className="font-mono">{selectedApplication.data.contact?.phone}</span></div>
                     <div><span className="block text-xs text-[var(--color-minesec-text-muted)]">DOB / Creation Date</span><span>{selectedApplication.data.contact?.dob}</span></div>
@@ -1005,7 +1083,7 @@ const CategoryManager = () => {
                   <h4 className="text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Supporting Documents</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {selectedApplication.documents.map(doc => (
-                      <a key={doc.id} href={`http://localhost:3000/uploads/${doc.filename}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg hover:border-[var(--color-minesec-gold)] transition-colors group">
+                      <a key={doc.id} href={`${API_BASE}/uploads/${doc.storage_key}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg hover:border-[var(--color-minesec-gold)] transition-colors group">
                         <div className="w-10 h-10 bg-white/10 rounded flex items-center justify-center group-hover:bg-[var(--color-minesec-gold)]/20 group-hover:text-[var(--color-minesec-gold)] transition-colors">
                           <ExternalLink size={18} />
                         </div>
@@ -1109,7 +1187,7 @@ const CategoryManager = () => {
                         <div className="flex items-center gap-3">
                           <button 
                             onClick={() => {
-                              navigator.clipboard.writeText(`http://localhost:5173/evaluate?token=${jury.access_token}`);
+                              navigator.clipboard.writeText(`${window.location.origin}/evaluate?token=${jury.access_token}`);
                               alert('Magic link copied to clipboard!');
                             }}
                             className="p-2 text-[var(--color-minesec-text-muted)] hover:text-white transition-colors"
@@ -1142,6 +1220,47 @@ const CategoryManager = () => {
               >
                 Tally Votes & Advance Candidates
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Step Votes Modal */}
+      {isVotesModalOpen && activeVotesStep && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="bento-card max-w-3xl w-full p-0 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+              <h3 className="text-lg font-bold">Vote Tallies: {activeVotesStep.name_en}</h3>
+              <button onClick={() => setIsVotesModalOpen(false)} className="text-[var(--color-minesec-text-muted)] hover:text-white transition-colors"><X size={24} /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              {stepVotes.length === 0 ? (
+                <div className="text-center text-[var(--color-minesec-text-muted)] p-8">No votes recorded for this step yet.</div>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-white/5 text-[var(--color-minesec-text-muted)] font-mono uppercase text-xs">
+                    <tr>
+                      <th className="p-4 font-normal tracking-wider">Reference</th>
+                      <th className="p-4 font-normal tracking-wider">Candidate Name</th>
+                      <th className="p-4 font-normal tracking-wider text-right">Total Votes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {stepVotes.map((vote, i) => (
+                      <tr key={i} className="hover:bg-white/5 transition-colors">
+                        <td className="p-4 font-mono text-[var(--color-minesec-gold)]">{vote.reference}</td>
+                        <td className="p-4 font-bold">{vote.candidate_name}</td>
+                        <td className="p-4 text-right font-mono font-bold text-lg">{vote.total_votes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            
+            <div className="p-6 border-t border-white/10 flex justify-end gap-4 bg-black/20">
+              <button onClick={() => setIsVotesModalOpen(false)} className="px-6 py-2 bg-white/10 text-white rounded font-bold transition-colors hover:bg-white/20">Close</button>
             </div>
           </div>
         </div>

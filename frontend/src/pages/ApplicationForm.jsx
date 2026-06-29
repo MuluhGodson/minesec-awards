@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, UploadCloud, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 const ApplicationForm = () => {
   const { t, language } = useLanguage();
@@ -23,7 +24,9 @@ const ApplicationForm = () => {
     division: '',
     sub_division: '',
     school: '',
-    justification: ''
+    justification: '',
+    matricule: '',
+    sex: ''
   });
   const [files, setFiles] = useState([]);
   const [coverPhoto, setCoverPhoto] = useState(null);
@@ -32,7 +35,7 @@ const ApplicationForm = () => {
     window.scrollTo(0, 0);
     const initData = async () => {
       try {
-        const catRes = await fetch(`http://localhost:3000/api/categories/${categoryId}`);
+        const catRes = await fetch(`${API_BASE}/api/categories/${categoryId}`);
         const catData = await catRes.json();
         
         if (catData.status === 'success') {
@@ -41,12 +44,6 @@ const ApplicationForm = () => {
           const isOpen = cat.is_always_open || 
             ((!cat.applications_open_at || new Date(cat.applications_open_at) <= now) && 
              (!cat.applications_close_at || new Date(cat.applications_close_at) >= now));
-
-          if (!isOpen) {
-            alert('Applications for this category are currently closed.');
-            navigate(`/category/${categoryId}`);
-            return;
-          }
 
           setCategory(cat);
         }
@@ -97,7 +94,7 @@ const ApplicationForm = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/api/applications/public/${categoryId}`, {
+      const response = await fetch(`${API_BASE}/api/applications/public/${categoryId}`, {
         method: 'POST',
         body: payload
       });
@@ -126,6 +123,30 @@ const ApplicationForm = () => {
 
   if (!category) {
     return <div className="min-h-screen pt-32 pb-24 px-6 flex items-center justify-center font-mono text-red-400">{t('appForm.notFound')}</div>;
+  }
+
+  const now = new Date();
+  const isOpen = category.is_always_open || 
+    ((!category.applications_open_at || new Date(category.applications_open_at) <= now) &&
+     (!category.applications_close_at || new Date(category.applications_close_at) >= now));
+
+  if (!isOpen) {
+    return (
+      <div className="min-h-screen pt-32 pb-24 px-6 flex flex-col items-center justify-center">
+        <div className="bento-card max-w-xl w-full text-center p-12 border-red-500/20 bg-red-500/5">
+          <div className="w-20 h-20 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mx-auto mb-6">
+            <X size={40} />
+          </div>
+          <h2 className="text-3xl font-bold mb-4 text-white">Submissions Closed</h2>
+          <p className="text-[var(--color-minesec-text-muted)] mb-8">
+            The deadline for receiving submissions for this category has passed. We are no longer accepting new applications.
+          </p>
+          <Link to="/" className="inline-block px-8 py-3 bg-white/10 hover:bg-white/20 text-white rounded font-bold transition-colors">
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (successReference) {
@@ -175,7 +196,7 @@ const ApplicationForm = () => {
   return (
     <div className="pt-32 pb-24 px-6 relative z-10 min-h-screen">
       <div className="max-w-4xl mx-auto">
-        <Link to={`/categories/${category.id}`} className="inline-flex items-center gap-2 text-[var(--color-minesec-text-muted)] hover:text-white transition-colors mb-8 font-mono text-xs uppercase tracking-wider">
+        <Link to={`/category/${category.id}`} className="inline-flex items-center gap-2 text-[var(--color-minesec-text-muted)] hover:text-white transition-colors mb-8 font-mono text-xs uppercase tracking-wider">
           <ArrowLeft size={16} /> {t('appForm.cancel')}
         </Link>
 
@@ -206,6 +227,18 @@ const ApplicationForm = () => {
                   <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-[#020a07] border border-white/10 rounded-lg px-4 py-3 focus:border-[var(--color-minesec-gold)] outline-none transition-colors font-mono" />
                 </div>
                 <div className="md:col-span-2">
+                  <label className="block text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase mb-2">Registration Number (Matricule)</label>
+                  <input type="text" value={formData.matricule} onChange={e => setFormData({...formData, matricule: e.target.value})} className="w-full bg-[#020a07] border border-white/10 rounded-lg px-4 py-3 focus:border-[var(--color-minesec-gold)] outline-none transition-colors font-mono" placeholder="Optional" />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase mb-2">Sex</label>
+                  <select required value={formData.sex} onChange={e => setFormData({...formData, sex: e.target.value})} className="w-full bg-[#020a07] border border-white/10 rounded-lg px-4 py-3 focus:border-[var(--color-minesec-gold)] outline-none transition-colors">
+                    <option value="">Select Sex</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div>
                   <label className="block text-xs font-mono text-[var(--color-minesec-text-muted)] uppercase mb-2">{t('appForm.dob')}</label>
                   <input type="date" required value={formData.dob} onChange={e => setFormData({...formData, dob: e.target.value})} className="w-full bg-[#020a07] border border-white/10 rounded-lg px-4 py-3 focus:border-[var(--color-minesec-gold)] outline-none transition-colors font-mono" />
                 </div>
