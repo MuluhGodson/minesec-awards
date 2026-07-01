@@ -2,22 +2,7 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getStorage } = require('firebase-admin/storage');
 
-let serviceAccount;
-
-// Check if we are in production (DigitalOcean) or local development
-if (process.env.FIREBASE_PRIVATE_KEY) {
-    // We are in production: use the individual env variables
-    serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Replace literal string "\n" with actual line breaks for the key
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    };
-} else {
-    // We are local: use the physical JSON file
-    serviceAccount = require('../config/minesec-awards-storage-firebase-adminsdk-fbsvc-35133f7077.json');
-}
-
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
 // 1. Initialize Firebase using the modular functions
 initializeApp({
     credential: cert(serviceAccount),
