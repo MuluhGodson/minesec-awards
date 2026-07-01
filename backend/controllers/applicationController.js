@@ -1,5 +1,7 @@
 const db = require('../db');
 const nodemailer = require('nodemailer');
+// 1. Import your central Firebase storage service
+const { uploadFile } = require('../services/storage');
 
 // Function to generate a random reference
 const generateReference = (editionYear, categoryCode) => {
@@ -43,52 +45,25 @@ exports.submitPublicApplication = async (req, res) => {
 
     const applicationId = appResult.rows[0].id;
 
-    // Handle File Uploads
+    // 2. Handle File Uploads via Firebase Storage
     if (req.files && req.files.length > 0) {
-      const fs = require('fs');
-      const path = require('path');
-      const storageProvider = process.env.STORAGE_PROVIDER || 'local';
+      // Clean category and reference to create a safe folder path in the bucket
+      const safeCatCode = category.code.replace(/[^a-z0-9]/gi, '_');
+      const safeRef = reference.replace(/[^a-z0-9-]/gi, '_');
+      const folderPath = `applications/${safeCatCode}/${safeRef}`;
 
-      if (storageProvider === 'local') {
-        const baseUploadsDir = path.join(__dirname, '../uploads');
-        // We use category code and reference for folder structure
-        // Clean them just in case
-        const safeCatCode = category.code.replace(/[^a-z0-9]/gi, '_');
-        const safeRef = reference.replace(/[^a-z0-9-]/gi, '_');
-        
-        const targetDirRelative = path.join(safeCatCode, safeRef);
-        const targetDirPath = path.join(baseUploadsDir, targetDirRelative);
-        
-        if (!fs.existsSync(targetDirPath)) {
-          fs.mkdirSync(targetDirPath, { recursive: true });
-        }
+      for (const file of req.files) {
+        // Upload the file buffer to Firebase and get the public URL back
+        const publicUrl = await uploadFile(file, folderPath);
 
-        for (const file of req.files) {
-          const finalRelativePath = path.join(targetDirRelative, file.filename);
-          const finalAbsolutePath = path.join(baseUploadsDir, finalRelativePath);
+        const kind = file.originalname.startsWith('COVER_PHOTO_') ? 'photo' : 'other';
 
-          // Move file from temporary multer location to new folder
-          fs.renameSync(file.path, finalAbsolutePath);
-
-          const kind = file.originalname.startsWith('COVER_PHOTO_') ? 'photo' : 'other';
-
-          await db.query(
-            `INSERT INTO application_documents (application_id, kind, label, filename, storage_key, size_bytes, mime_type, checksum_sha256)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'no-checksum')`,
-            [applicationId, kind, file.originalname, file.originalname, finalRelativePath, file.size, file.mimetype]
-          );
-        }
-      } else if (storageProvider === 's3') {
-        console.log('S3 Storage Provider configured - moving files to bucket (Mock implementation)');
-        for (const file of req.files) {
-          const s3MockUrl = `https://s3.amazonaws.com/minesec-awards/${category.code}/${reference}/${file.filename}`;
-          const kind = file.originalname.startsWith('COVER_PHOTO_') ? 'photo' : 'other';
-          await db.query(
-            `INSERT INTO application_documents (application_id, kind, label, filename, storage_key, size_bytes, mime_type, checksum_sha256)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'no-checksum')`,
-            [applicationId, kind, file.originalname, file.originalname, s3MockUrl, file.size, file.mimetype]
-          );
-        }
+        // Save the public URL to the database as the storage_key
+        await db.query(
+          `INSERT INTO application_documents (application_id, kind, label, filename, storage_key, size_bytes, mime_type, checksum_sha256)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'no-checksum')`,
+          [applicationId, kind, file.originalname, file.originalname, publicUrl, file.size, file.mimetype]
+        );
       }
     }
 
@@ -100,7 +75,7 @@ exports.submitPublicApplication = async (req, res) => {
         secure: process.env.SMTP_SECURE === 'true',
         ignoreTLS: process.env.SMTP_SECURE !== 'true',
       };
-      
+
       if (process.env.SMTP_USER && process.env.SMTP_USER.trim() !== '') {
         transporterConfig.auth = {
           user: process.env.SMTP_USER,
@@ -110,7 +85,7 @@ exports.submitPublicApplication = async (req, res) => {
 
       const transporter = nodemailer.createTransport(transporterConfig);
       const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@minesec.cm';
-      
+
       const mailOptions = {
         from: `"MINESEC Awards" <${fromEmail}>`,
         to: email,
@@ -166,9 +141,6 @@ exports.getCategoryApplications = async (req, res) => {
 exports.shortlistApplication = async (req, res) => {
   try {
     const { applicationId } = req.params;
-    // We don't have authenticated admin ID from req.user right now in prototype if auth is disabled, but we would use it here.
-    // For now we'll set it to NULL or a static admin ID if needed, but let's just leave shortlisted_by NULL for prototype if not available.
-    
     const result = await db.query(
       `UPDATE applications 
        SET status = 'finalist', shortlisted_at = NOW() 
@@ -179,7 +151,7 @@ exports.shortlistApplication = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Application not found' });
     }
-    
+
     res.json({ status: 'success', data: result.rows[0] });
   } catch (err) {
     console.error('Error shortlisting application:', err);
@@ -224,7 +196,7 @@ exports.selectWinner = async (req, res) => {
 exports.revokeShortlist = async (req, res) => {
   try {
     const { applicationId } = req.params;
-    
+
     const result = await db.query(
       `UPDATE applications 
        SET status = 'submitted', shortlisted_at = NULL 
@@ -235,7 +207,7 @@ exports.revokeShortlist = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Application not found' });
     }
-    
+
     res.json({ status: 'success', data: result.rows[0] });
   } catch (err) {
     console.error('Error revoking shortlist:', err);

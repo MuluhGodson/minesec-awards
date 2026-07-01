@@ -26,7 +26,7 @@ const PartnersSection = () => {
   }, []);
 
   const getTierDotColor = (tier) => {
-    switch(tier) {
+    switch (tier) {
       case 'platinum': return 'bg-white';
       case 'gold': return 'bg-[var(--color-minesec-gold)]';
       case 'silver': return 'bg-gray-300';
@@ -74,11 +74,11 @@ const PartnersSection = () => {
                     {sponsor.tier}
                   </span>
                 </div>
-                
+
                 {sponsor.logo_storage_key ? (
-                  <img 
-                    src={`${API_BASE}/uploads/${sponsor.logo_storage_key}`} 
-                    alt={`${sponsor.name} logo`} 
+                  <img
+                    src={`${sponsor.logo_storage_key}`}
+                    alt={`${sponsor.name} logo`}
                     className="h-16 object-contain mb-4 grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
                   />
                 ) : (
@@ -86,7 +86,7 @@ const PartnersSection = () => {
                     {sponsor.name}
                   </h4>
                 )}
-                
+
                 <p className="text-xs text-[var(--color-minesec-text-muted)] font-mono mt-auto pt-4">
                   {sponsor.sector || 'Partner'}
                 </p>
